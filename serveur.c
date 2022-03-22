@@ -87,6 +87,7 @@ int main(int argc, char **argv){
                break;
             }
          }
+         
          lus = read(socketDialogue, messageRecu, LG_MESSAGE*sizeof(char));
          while(temp != NULL && temp->socketClient != socketDialogue){
             temp = temp->suiv;
@@ -98,32 +99,7 @@ int main(int argc, char **argv){
                exit(-5);
             case 0 :
                fprintf(stderr, "Le client %s s'est deconnecté !\n\n", temp->login);
-               close(temp->socketClient);
-               for(int i = 1 ; i < nbrePolls ; i++){
-                  if(polls[i].fd == temp->socketClient){
-                     polls[i].revents = 0;
-                     for(int j = i ; j < 3 ; j++){
-                        polls[j].fd = polls[j + 1].fd;
-                        polls[j].events = polls[j + 1].events;
-                     }
-                     polls[3].fd = 0;
-                     polls[3].events = 0;
-                     break;
-                  }
-               }
-               if(nbrePolls == 2){
-                  clients = NULL;
-                  free(temp);
-               }else{
-                  User *temp2 = temp;
-                  temp = clients;
-                  while(temp->suiv != temp2 && temp->suiv != NULL){
-                     temp = temp->suiv;
-                  }
-                  temp->suiv = temp2->suiv;
-                  free(temp2);
-               }
-               nbrePolls--;
+               disconnect(clients, temp, polls, &nbrePolls);
                break;
             default:
                if(messageRecu[0] != 47){
@@ -152,7 +128,7 @@ int main(int argc, char **argv){
                   }
                }
 
-               cmdHandler(clients, temp, getCmd, getArgs);
+               cmdHandler(clients, temp, getCmd, getArgs, polls, &nbrePolls);
                break;
          }
       }else if(polls[0].revents && POLLIN && nbrePolls < 4){
@@ -205,8 +181,6 @@ int main(int argc, char **argv){
          }
       }
    }
-   
-   close(socketDialogue);
    
    close(socketEcoute);
 
