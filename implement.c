@@ -21,6 +21,14 @@ int cmdHandler(User *clients, User *sender, char *command, char args[2][256], st
             help(args[0]);
             break;
         case 1:
+            printf("Le client %s s'est déconnecté.\n", sender->login);
+            strcpy(args[0], "Le client ");
+            strcat(args[0], sender->login);
+            strcat(args[0], " s'est déconnecté.\n");
+            User *serv = NULL;
+            strcpy(serv->login, "Serveur");
+            mg(clients, serv, args[0], polls, nbrePolls);
+            free(serv);
             disconnect(clients, sender, polls, nbrePolls);
             break;
         case 2:
@@ -28,11 +36,14 @@ int cmdHandler(User *clients, User *sender, char *command, char args[2][256], st
                 if(!login(sender->login, args[0])){
                     printf("Invalid Username, try again!\n");
                 }else{
-                    printf("Le client %s vient de se connecter!\n", sender->login);
+                    printf("\nLe client %s vient de se connecter!\n", sender->login);
                     strcpy(args[0], "Le client ");
                     strcat(args[0], sender->login);
                     strcat(args[0], " vient de nous rejoindre!\n");
-                    mg(clients, sender, args[0], polls, nbrePolls);
+                    User *serv = malloc(sizeof(User));
+                    strcpy(serv->login, "Serveur");
+                    mg(clients, serv, args[0], polls, nbrePolls);
+                    free(serv);
                 }
             }else{
                 serverMsg(clients, sender, "Vous êtes déjà connecté...\n\n", polls, nbrePolls);
@@ -62,6 +73,12 @@ void help(char *cmd){
 }
 
 void disconnect(User *clients, User *temp, struct pollfd *polls, int *nbrePolls){
+    char msg[256];
+    strcpy(msg, temp->login);
+    strcat(msg, " s'est déconnecté!\n\n");
+    User *serv = malloc(sizeof(User));
+    strcpy(serv->login, "Serveur");
+
     close(temp->socketClient);
     for(int i = 1 ; i < *nbrePolls ; i++){
         if(polls[i].fd == temp->socketClient){
@@ -75,8 +92,9 @@ void disconnect(User *clients, User *temp, struct pollfd *polls, int *nbrePolls)
             break;
         }
     }
+    *nbrePolls -= 1;
 
-    if(*nbrePolls == 2){
+    if(*nbrePolls == 1){
         clients = NULL;
         free(temp);
     }else{
@@ -87,8 +105,10 @@ void disconnect(User *clients, User *temp, struct pollfd *polls, int *nbrePolls)
         }
         temp->suiv = temp2->suiv;
         free(temp2);
+        mg(temp, serv, msg, polls, nbrePolls);
     }
-    *nbrePolls--;
+
+    free(serv);
 }
 
 int login(char *buffer, char *usrName){
@@ -104,7 +124,13 @@ int login(char *buffer, char *usrName){
 }
 
 void mp(User *clients, User *sender, User *target, char *msg, struct pollfd *polls, int *nbrePolls){
-    int ecrits = write(target->socketClient, msg, strlen(msg));
+    char finalMsg[256] = {"\n"};
+    strcat(finalMsg, sender->login);
+    strcat(finalMsg, " >> ");
+    strcat(finalMsg, msg);
+    strcat(finalMsg, "\n");
+
+    int ecrits = write(target->socketClient, finalMsg, strlen(finalMsg));
     switch(ecrits){
         case -1 :
             perror("write");

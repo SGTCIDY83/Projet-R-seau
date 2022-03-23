@@ -173,6 +173,7 @@ int main(int argc, char **argv){
                   temp->suiv = NULL;
                   free(temp2);
                }
+               break;
             default:
                printf("Demande du login envoyée...\n");
                polls[nbrePolls].fd = temp->socketClient;
