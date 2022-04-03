@@ -52,6 +52,11 @@ int main(int argc, char **argv){
    polls[0].fd = socketEcoute;
    polls[0].events = POLLIN;
 
+   for(int i = 1 ; i < 4 ; i++){
+      polls[i].fd = 0;
+      polls[i].events = 0;
+   }
+
    longueurAdresse = sizeof(struct sockaddr_in);
    memset(&pointDeRencontreLocal, 0x00, longueurAdresse);
    pointDeRencontreLocal.sin_family = PF_INET;
@@ -133,9 +138,6 @@ int main(int argc, char **argv){
          }
       }else if(polls[0].revents && POLLIN && nbrePolls < 4){
          socketDialogue = accept(socketEcoute, (struct sockaddr *)&pointDeRencontreDistant, &longueurAdresse);
-         if(nbrePolls == 4){
-            //force quit client
-         }
          if(clients == NULL){
             clients = malloc(sizeof(User));
             clients->socketClient = socketDialogue;
@@ -152,34 +154,9 @@ int main(int argc, char **argv){
             temp->suiv = NULL;
          }
 
-         ecrits = write(socketDialogue, "Bienvenu!\nVeuillez vous identifier avec la commande '/login $username$'\n", strlen("Bienvenu!\nVeuillez vous identifier avec la commande '/login $username$'\n"));
-         switch(ecrits){
-            case -1 :
-               perror("write");
-               close(socketDialogue);
-               exit(-4);
-            case 0 :
-               fprintf(stderr, "La socket a été fermée par le client !\n\n"); 
-               close(socketDialogue);
-               if(nbrePolls == 1){
-                  clients = NULL;
-                  free(temp);
-               }else{
-                  User *temp2 = temp;
-                  temp = clients;
-                  while(temp->suiv != temp2 && temp->suiv != NULL){
-                     temp = temp->suiv;
-                  }
-                  temp->suiv = NULL;
-                  free(temp2);
-               }
-               break;
-            default:
-               printf("Demande du login envoyée...\n");
-               polls[nbrePolls].fd = temp->socketClient;
-               polls[nbrePolls].events = POLLIN;
-               nbrePolls++;
-         }
+         polls[nbrePolls].fd = temp->socketClient;
+         polls[nbrePolls].events = POLLIN;
+         nbrePolls++;
       }
    }
    

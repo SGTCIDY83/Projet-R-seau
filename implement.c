@@ -1,6 +1,6 @@
 int cmdHandler(User *clients, User *sender, char *command, char args[2][256], struct pollfd *polls, int *nbrePolls){
     User *temp = clients;
-    char *listCommands[6];
+    char *listCommands[7];
     int i = 0;
 
     listCommands[0] = "/help";
@@ -9,6 +9,7 @@ int cmdHandler(User *clients, User *sender, char *command, char args[2][256], st
     listCommands[3] = "/mp";
     listCommands[4] = "/mg";
     listCommands[5] = "/users";
+    listCommands[6] = "/version";
 
     for(i = 0 ; i < 6 ; i++){
         if(!strcmp(listCommands[i], command)){
@@ -33,17 +34,25 @@ int cmdHandler(User *clients, User *sender, char *command, char args[2][256], st
             break;
         case 2:
             if(!strcmp(sender->login, "")){
-                if(!login(sender->login, args[0])){
-                    printf("Invalid Username, try again!\n");
+                while(temp != NULL && strcmp(args[0], temp->login) != 0){
+                    temp = temp->suiv;
+                }
+
+                if(temp == NULL){
+                    if(!login(sender->login, args[0])){
+                        serverMsg(clients, sender, "Nom d'utilisateur incorrect\n\n", polls, nbrePolls);
+                    }else{
+                        printf("\nLe client %s vient de se connecter!\n", sender->login);
+                        strcpy(args[0], "/mp serveur Le client ");
+                        strcat(args[0], sender->login);
+                        strcat(args[0], " vient de nous rejoindre!\n");
+                        User *serv = malloc(sizeof(User));
+                        strcpy(serv->login, "serveur");
+                        mg(clients, serv, args[0], polls, nbrePolls);
+                        free(serv);
+                    }
                 }else{
-                    printf("\nLe client %s vient de se connecter!\n", sender->login);
-                    strcpy(args[0], "Le client ");
-                    strcat(args[0], sender->login);
-                    strcat(args[0], " vient de nous rejoindre!\n");
-                    User *serv = malloc(sizeof(User));
-                    strcpy(serv->login, "Serveur");
-                    mg(clients, serv, args[0], polls, nbrePolls);
-                    free(serv);
+                    serverMsg(clients, sender, "/mp serveur Ce nom d'utilisateur est déjà pris\n\n", polls, nbrePolls);
                 }
             }else{
                 serverMsg(clients, sender, "Vous êtes déjà connecté...\n\n", polls, nbrePolls);
@@ -63,22 +72,47 @@ int cmdHandler(User *clients, User *sender, char *command, char args[2][256], st
             mp(clients, sender, temp, args[1], polls, nbrePolls);
 
             break;
+        case 6:
+            if(!version(clients, sender, polls, nbrePolls)){
+                disconnect(clients, sender, polls, nbrePolls);
+            }
     }
 
     return 1;
 }
 
+int version(User *clients, User *sender, struct pollfd *polls, int *nbrePolls){
+    int ecrits = write(sender->socketClient, "/mp serveur 0.1b", strlen("/mp serveur v0.1b"));
+    switch(ecrits){
+        case -1 :
+            perror("write");
+            close(sender->socketClient);
+            exit(-3);
+        case 0 :
+            fprintf(stderr, "La client a fermé la socket !\n\n");
+            return 0;
+        default:
+            ecrits = write(sender->socketClient, "/mp serveur Bienvenu!\nVeuillez vous identifier avec la commande '/login $username$'\n", strlen("/mp serveur Bienvenu!\nVeuillez vous identifier avec la commande '/login $username$'\n"));
+            switch(ecrits){
+                case -1 :
+                    perror("write");
+                    close(sender->socketClient);
+                    exit(-3);
+                case 0 :
+                    fprintf(stderr, "La client a fermé la socket !\n\n");
+                    return 0;
+                default:
+                    return 1;
+            }
+    }
+}
+
 void help(char *cmd){
     system("cat command.txt");
+    printf("\n\n");
 }
 
 void disconnect(User *clients, User *temp, struct pollfd *polls, int *nbrePolls){
-    char msg[256];
-    strcpy(msg, temp->login);
-    strcat(msg, " s'est déconnecté!\n\n");
-    User *serv = malloc(sizeof(User));
-    strcpy(serv->login, "Serveur");
-
     close(temp->socketClient);
     for(int i = 1 ; i < *nbrePolls ; i++){
         if(polls[i].fd == temp->socketClient){
@@ -92,7 +126,7 @@ void disconnect(User *clients, User *temp, struct pollfd *polls, int *nbrePolls)
             break;
         }
     }
-    *nbrePolls -= 1;
+    --*nbrePolls;
 
     if(*nbrePolls == 1){
         clients = NULL;
@@ -105,10 +139,7 @@ void disconnect(User *clients, User *temp, struct pollfd *polls, int *nbrePolls)
         }
         temp->suiv = temp2->suiv;
         free(temp2);
-        mg(temp, serv, msg, polls, nbrePolls);
     }
-
-    free(serv);
 }
 
 int login(char *buffer, char *usrName){
@@ -124,13 +155,7 @@ int login(char *buffer, char *usrName){
 }
 
 void mp(User *clients, User *sender, User *target, char *msg, struct pollfd *polls, int *nbrePolls){
-    char finalMsg[256] = {"\n"};
-    strcat(finalMsg, sender->login);
-    strcat(finalMsg, " >> ");
-    strcat(finalMsg, msg);
-    strcat(finalMsg, "\n");
-
-    int ecrits = write(target->socketClient, finalMsg, strlen(finalMsg));
+    int ecrits = write(target->socketClient, msg, strlen(msg));
     switch(ecrits){
         case -1 :
             perror("write");
@@ -138,7 +163,7 @@ void mp(User *clients, User *sender, User *target, char *msg, struct pollfd *pol
             exit(-3);
         case 0 :
             fprintf(stderr, "La client %s a fermé la socket !\n\n", target->login);
-            ecrits = write(sender->socketClient, "Le destinataire est déconnecté, le message n'a pas pu etre envoyé \n\n", strlen("Le destinataire est déconnecté, le message n'a pas pu etre envoyé \n\n"));
+            ecrits = write(sender->socketClient, "/ret 001\n\n", strlen("/ret 001\n\n"));
             switch(ecrits){
                 case -1 :
                     perror("write");
@@ -152,7 +177,7 @@ void mp(User *clients, User *sender, User *target, char *msg, struct pollfd *pol
             disconnect(clients, target, polls, nbrePolls);
             break;
         default:
-            ecrits = write(sender->socketClient, "Le message a été envoyé\n\n", strlen("Le message a été envoyé\n\n"));
+            ecrits = write(sender->socketClient, "/ret 200\n\n", strlen("/ret 200\n\n"));
             switch(ecrits){
                 case -1 :
                     perror("write");
