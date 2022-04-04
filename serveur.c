@@ -11,20 +11,56 @@
 #define LG_MESSAGE 256
 
 int main(int argc, char **argv){
-   int PORT;
+   int PORT = -1;
+   char greatings[100] = {"\0"};
+   char serverName[20] = {"\0"};
    for(int i = 0 ; i < argc ; i++){
       if(!strcmp(argv[i], "-p")){
          if(i == argc - 1){
             printf("Error : Missing port number after -p argument\n");
             exit(-6);
-         }
-         if(!(PORT = atoi(argv[i + 1]))){
+         }else if(!(PORT = atoi(argv[i + 1]))){
+            if(!strcmp(argv[i + 1], "-g") || !strcmp(argv[i + 1], "-n")){
+               printf("Error : Missing port number after -p argument\n");
+               exit(-6);
+            }
             printf("Error : argument -p must be followed by an integer type of argument\n");
             exit(-6);
          }
-         break;
-      }else if(i == argc - 1){
-         printf("Error : -p argument missing\n");
+         if(i == argc - 1 && (!strcmp(greatings, "") || !strcmp(serverName, ""))){
+            printf("Error : arguments -g -n may be missing\n");
+            exit(-6);
+         }
+      }else if(!strcmp(argv[i], "-g")){
+         if(i == argc - 1){
+            printf("Error : Missing greating message after -g argument\n");
+            exit(-6);
+         }
+         if(!strcmp(argv[i + 1], "-p") || !strcmp(argv[i + 1], "-n")){
+            printf("Error : Missing greating message after -g argument\n");
+            exit(-6);
+         }
+         strcpy(greatings, argv[i + 1]);
+         if(i == argc - 1 && (PORT == -1 || !strcmp(serverName, ""))){
+            printf("Error : arguments -p -n may be missing\n");
+            exit(-6);
+         }
+      }else if(!strcmp(argv[i], "-n")){
+         if(i == argc - 1){
+            printf("Error : Missing server name after -n argument\n");
+            exit(-6);
+         }
+         if(!strcmp(argv[i + 1], "-p") || !strcmp(argv[i + 1], "-n")){
+            printf("Error : Missing server name after -n argument\n");
+            exit(-6);
+         }
+         strcpy(serverName, argv[i + 1]);
+         if(i == argc - 1 && (PORT == -1 || !strcmp(greatings, ""))){
+            printf("Error : arguments -p -g may be missing\n");
+            exit(-6);
+         }
+      }else if(argc == 1){
+         printf("Error : -p -g -n arguments missing\n");
          exit(-6);
       }
    }

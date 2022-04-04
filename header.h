@@ -9,7 +9,7 @@ typedef struct User{
 
 int cmdHandler(User *clients, User *sender, char *command, char args[2][256], struct pollfd *polls, int *nbrePolls);
 
-int version(User *clients, User *sender, struct pollfd *polls, int *nbrePolls);
+int version(User *sender, char *msg);
 
 void help(char *cmd);
 
