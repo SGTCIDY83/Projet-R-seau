@@ -12,8 +12,8 @@
 
 int main(int argc, char **argv){
    int PORT = -1;
-   char greatings[100] = {"\0"};
-   char serverName[20] = {"\0"};
+   char greatings[100] = "Bonjour et bienvenue!";
+   char serverName[20] = "We Chat";
    for(int i = 0 ; i < argc ; i++){
       if(!strcmp(argv[i], "-p")){
          if(i == argc - 1){
@@ -139,7 +139,7 @@ int main(int argc, char **argv){
                close(socketDialogue);
                exit(-5);
             case 0 :
-               fprintf(stderr, "Le client %s s'est deconnecté !\n\n", temp->login);
+               fprintf(stderr, "Le client %s s'est deconnecté.\n\n", temp->login);
                disconnect(clients, temp, polls, &nbrePolls);
                break;
             default:
@@ -148,7 +148,7 @@ int main(int argc, char **argv){
                }
 
                for(int i = 0 ; i < strlen(messageRecu) ; i++){
-                  if(messageRecu[i] != 32){
+                  if(messageRecu[i] != 32 && messageRecu[i] != 10){
                      getCmd[i] = messageRecu[i];
                   }else{
                      break;

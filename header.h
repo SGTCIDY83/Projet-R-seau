@@ -21,4 +21,6 @@ void mp(User *clients, User *sender, User *target, char *msg, struct pollfd *pol
 
 void mg(User *clients, User *client, char *msg, struct pollfd *polls, int *nbrePolls);
 
+void users(User *clients, User *sender, struct pollfd *polls, int *nbrePolls);
+
 void serverMsg(User *clients, User *target, char *msg, struct pollfd *polls, int *nbrePolls);

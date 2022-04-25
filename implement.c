@@ -26,11 +26,12 @@ int cmdHandler(User *clients, User *sender, char *command, char args[2][256], st
             strcpy(args[0], "/mg serveur Le client ");
             strcat(args[0], sender->login);
             strcat(args[0], " s'est déconnecté.\n");
-            User *serv = NULL;
+            disconnect(clients, sender, polls, nbrePolls);
+            
+            User *serv = malloc(sizeof(User));
             strcpy(serv->login, "Serveur");
             mg(clients, serv, args[0], polls, nbrePolls);
             free(serv);
-            disconnect(clients, sender, polls, nbrePolls);
             break;
         case 2:
             if(!strcmp(sender->login, "")){
@@ -70,14 +71,38 @@ int cmdHandler(User *clients, User *sender, char *command, char args[2][256], st
                 break;
             }else if(!strcmp(args[1], "")){
                 serverMsg(clients, sender, "/ret 400", polls, nbrePolls);
-                printf("Vous n'avez pas écrit de message.\n");
+                printf("Pas de message.\n");
+                break;
+            }else if(strlen(args[1]) > 1024){
+                serverMsg(clients, sender, "/ret 400", polls, nbrePolls);
+                printf("Message trop long.\n");
+            }
+            char msgpriv[1049] = {"/mp "};
+            strcat(msgpriv, sender->login);
+            strcat(msgpriv, " ");
+            strcat(msgpriv, args[1]);
+            mp(clients, sender, temp, msgpriv, polls, nbrePolls);
+
+            break;
+        case 4:
+            if(!strcmp(args[0], "")){
+                serverMsg(clients, sender, "/ret 400", polls, nbrePolls);
+                printf("Pas de message.\n");
+                break;
+            }else if(strlen(args[0]) > 1024){
+                serverMsg(clients, sender, "/ret 400", polls, nbrePolls);
+                printf("Message trop long.\n");
                 break;
             }
-            char msg[1049] = {"/mp "};
-            strcat(msg, sender->login);
-            strcat(msg, " ");
-            strcat(msg, args[1]);
-            mp(clients, sender, temp, msg, polls, nbrePolls);
+            char msgglob[1049] = {"/mg "};
+            strcat(msgglob, sender->login);
+            strcat(msgglob, " ");
+            strcat(msgglob, args[0]);
+            mg(clients, sender, msgglob, polls, nbrePolls);
+
+            break;
+        case 5:
+            users(clients, sender, polls, nbrePolls);
 
             break;
         case 6:
@@ -90,6 +115,8 @@ int cmdHandler(User *clients, User *sender, char *command, char args[2][256], st
             }else{
                 serverMsg(clients, sender, "/ret 426", polls, nbrePolls);
             }
+
+            break;
     }
 
     return 1;
@@ -179,12 +206,26 @@ void mp(User *clients, User *sender, User *target, char *msg, struct pollfd *pol
 }
 
 void mg(User *clients, User *sender, char *msg, struct pollfd *polls, int *nbrePolls){
-   User *temp = clients;
+    User *temp = clients;
 
-   while(temp != NULL){
-        mp(clients, sender, temp, msg, polls, nbrePolls);
+    while(temp != NULL){
+        if(strcmp(temp->login, sender->login) != 0) mp(clients, sender, temp, msg, polls, nbrePolls);
+
         temp = temp->suiv;
-   }
+    }
+}
+
+void users(User *clients, User *sender, struct pollfd *polls, int *nbrePolls){
+    char msg[1035] = "/mp serveur Utilisateurs: ";
+    User *temp = clients;
+
+    while(temp != NULL){
+        strcat(msg, temp->login);
+        if(temp->suiv != NULL) strcat(msg, " ; ");
+        temp = temp->suiv;
+    }
+
+    serverMsg(clients, sender, msg, polls, nbrePolls);
 }
 
 void serverMsg(User *clients, User *target, char *msg, struct pollfd *polls, int *nbrePolls){
