@@ -6,7 +6,7 @@ int find_network_newline(char *message, int inbuf) {
 }
 
 int buffer_message(char *message, int *inbuf, int *espace, char *after) {
-    int bytes_read = read(STDIN_FILENO, after, 256 - *inbuf); // on récupère la taille de la ligne en nombre d'octets*
+    int bytes_read = read(STDIN_FILENO, after, 256 - *inbuf); // on récupère la taille de la ligne en nombre d'octets
     *inbuf += bytes_read;
     int where; // où est la fin de la ligne
     // On trouve la fin de la ligne
@@ -36,7 +36,7 @@ char *getCmd(char message[]) {
     return cmd;
 }
 
-char **getArgs(char message[], char cmd[]) {
+char **getArgs(char message[], char *cmd) {
     char **args = malloc(2 * sizeof(char *));
     for (int i = 0; i < 2; i++) {
         args[i] = malloc(LG_MESSAGE * sizeof(char));
@@ -52,7 +52,7 @@ char **getArgs(char message[], char cmd[]) {
                 sub = i + 1;
             }
             continue;
-        } else if (message[i] != 10) {
+        } else if (*(message + i) != '\n') {
             args[j][i - sub] = message[i];
         }
     }
@@ -60,7 +60,7 @@ char **getArgs(char message[], char cmd[]) {
     return args;
 }
 
-void cmdHandler(char *message, char prevCmd[], char **prevArgs) {
+void cmdHandler(char *message, char *prevCmd, char **prevArgs) {
     char *listCommands[6];
     int size = sizeof(listCommands) / sizeof(listCommands[0]);
     int returnCode;

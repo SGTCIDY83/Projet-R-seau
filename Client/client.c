@@ -126,7 +126,23 @@ int main(int argc, char **argv) {
                 }
 
                 prevCmd = getCmd(messageEnvoi); //On récupère la commande
-                prevArgs = getArgs(messageEnvoi, prevCmd); //On récupère le/les argument(s)
+
+                int j = 0;
+                int sub = strlen(prevCmd) + 1;
+                for (int i = strlen(prevCmd) + 1; i < strlen(messageEnvoi); i++) {
+                    if (!strcmp(prevCmd, "/mp") && j == 0) {
+                        if (messageEnvoi[i] != 32) {
+                            prevArgs[j][i - sub] = messageEnvoi[i];
+                        } else {
+                            j++;
+                            sub = i + 1;
+                        }
+                        continue;
+                    }else if (*(messageEnvoi + i) != '\n') {
+                        prevArgs[j][i - sub] = messageEnvoi[i];
+                    }
+                }
+
                 if (!strcmp(prevCmd, "/mg")) {
                     printf("\x1b[1F"); // On va a la ligne précédente du terminal
                     printf("\x1b[2K"); // On efface la ligne

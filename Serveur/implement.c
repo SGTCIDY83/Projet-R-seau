@@ -19,7 +19,7 @@ char **getArgs(char message[], char cmd[]) {
     int j = 0;
     int sub = strlen(cmd) + 1;
     for (int i = strlen(cmd) + 1; i < strlen(message); i++) {
-        if ((!strcmp(cmd, "/mp") || !strcmp(cmd, "/mg")) && j == 0) {
+        if (!strcmp(cmd, "/mp") && j == 0) {
             if (message[i] != 32) {
                 args[j][i - sub] = message[i];
             } else {
@@ -143,8 +143,8 @@ User *cmdHandler(User *clients, User *sender, char *message, struct pollfd *poll
             if (version(args[0]) == 1) {
                 char greetingMess[110] = "/greating ";
                 strcat(greetingMess, greeting);
-                serverMsg(clients, sender, "/ret 200\n", polls, nbrePolls);
                 serverMsg(clients, sender, greetingMess, polls, nbrePolls);
+                sleep(0.1);
                 serverMsg(clients, sender, "/login\n", polls, nbrePolls);
             } else if (version(args[0]) == 0) {
                 serverMsg(clients, sender, "/ret 426\n", polls, nbrePolls);
@@ -176,14 +176,15 @@ void disconnect(User **clients, char *Lequel, struct pollfd *polls, int *nbrePol
         for (int i = 1; i < *nbrePolls; i++) {
             if (polls[i].fd == temp->socketClient) {
                 polls[i].revents = 0;
-                for (int j = i; j < 3; j++) {
+                for (int j = i; j < *nbrePolls; j++) {
                     polls[j].fd = polls[j + 1].fd;
                     polls[j].events = polls[j + 1].events;
                 }
-                polls[3].fd = polls[3].events = 0;
+                polls[*nbrePolls - 1].fd = polls[*nbrePolls - 1].events = 0;
                 break;
             }
         }
+        polls = realloc(polls, *nbrePolls * sizeof(struct pollfd));
         --*nbrePolls;
 
         *clients = temp->suiv;

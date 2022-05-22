@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
     socklen_t longueurAdresse;
     int socketDialogue;
     struct sockaddr_in pointDeRencontreDistant;
-    struct pollfd polls[4];
+    struct pollfd *polls = malloc(sizeof(struct pollfd));
     User *clients = NULL;
     char messageEnvoi[LG_MESSAGE];
     char messageRecu[LG_MESSAGE];
@@ -77,11 +77,6 @@ int main(int argc, char **argv) {
 
     polls[0].fd = socketEcoute;
     polls[0].events = POLLIN;
-
-    for (int i = 1; i < 4; i++) {
-        polls[i].fd = 0;
-        polls[i].events = 0;
-    }
 
     longueurAdresse = sizeof(struct sockaddr_in);
     memset(&pointDeRencontreLocal, 0x00, longueurAdresse);
@@ -109,63 +104,70 @@ int main(int argc, char **argv) {
         User *temp = clients;
         char getCmd[LG_MESSAGE * sizeof(char)] = {"\0"};
         char getArgs[2][LG_MESSAGE * sizeof(char)] = {"\0", {"\0"}};
+        int return_value = poll(polls,nbrePolls,3000);
 
-        if (poll(polls, nbrePolls, 3000) == -1) perror("select");
-        else if ((polls[1].revents || polls[2].revents || polls[3].revents) && POLLIN) {
-            for (int i = 1; i < nbrePolls; i++) {
-                if (polls[i].revents) {
-                    socketDialogue = polls[i].fd;
-                    break;
-                }
-            }
-
-            lus = read(socketDialogue, messageRecu, LG_MESSAGE * sizeof(char));
-            while (temp != NULL && temp->socketClient != socketDialogue) {
-                temp = temp->suiv;
-            }
-            switch (lus) {
-                case -1 :
-                    perror("read");
-                    close(socketDialogue);
-                    exit(-5);
-                case 0 :
-                    strcpy(messageEnvoi, "/mg serveur Le client ");
-                    strcat(messageEnvoi, temp->login);
-                    strcat(messageEnvoi, " s'est déconnecté.\n");
-                    mg(clients, temp->login, messageEnvoi, polls, &nbrePolls);
-                    disconnect(&clients, temp->login, polls, &nbrePolls);
-                    break;
-                default:
-                    if (messageRecu[0] != 47) {
-                        break;
+        if (return_value) {
+            if (polls[0].revents && POLLIN) {
+                socketDialogue = accept(socketEcoute, (struct sockaddr *) &pointDeRencontreDistant, &longueurAdresse);
+                if (clients == NULL) {
+                    clients = malloc(sizeof(User));
+                    clients->socketClient = socketDialogue;
+                    strcpy(clients->login, "");
+                    clients->suiv = NULL;
+                    temp = clients;
+                } else {
+                    while (temp->suiv != NULL) {
+                        temp = temp->suiv;
                     }
 
-                    clients = cmdHandler(clients, temp, messageRecu, polls, &nbrePolls, greeting);
-                    break;
-            }
-        } else if (polls[0].revents && POLLIN && nbrePolls < 4) {
-            socketDialogue = accept(socketEcoute, (struct sockaddr *) &pointDeRencontreDistant, &longueurAdresse);
-            if (clients == NULL) {
-                clients = malloc(sizeof(User));
-                clients->socketClient = socketDialogue;
-                strcpy(clients->login, "");
-                clients->suiv = NULL;
-                temp = clients;
-            } else {
-                while (temp->suiv != NULL) {
+                    temp->suiv = malloc(sizeof(User));
+                    temp->suiv->socketClient = socketDialogue;
+                    strcpy(temp->suiv->login, "");
                     temp = temp->suiv;
+                    temp->suiv = NULL;
                 }
 
-                temp->suiv = malloc(sizeof(User));
-                temp->suiv->socketClient = socketDialogue;
-                strcpy(temp->suiv->login, "");
-                temp = temp->suiv;
-                temp->suiv = NULL;
+                polls = realloc(polls, 1 + nbrePolls * sizeof(struct pollfd));
+                polls[nbrePolls].fd = temp->socketClient;
+                polls[nbrePolls].events = POLLIN;
+                nbrePolls++;
             }
 
-            polls[nbrePolls].fd = temp->socketClient;
-            polls[nbrePolls].events = POLLIN;
-            nbrePolls++;
+            for (int i = 1 ; i < nbrePolls ; i++) {
+                if (polls[i].revents && POLLIN) {
+                    for (int i = 1; i < nbrePolls; i++) {
+                        if (polls[i].revents) {
+                            socketDialogue = polls[i].fd;
+                            break;
+                        }
+                    }
+
+                    lus = read(socketDialogue, messageRecu, LG_MESSAGE * sizeof(char));
+                    while (temp != NULL && temp->socketClient != socketDialogue) {
+                        temp = temp->suiv;
+                    }
+                    switch (lus) {
+                        case -1 :
+                            perror("read");
+                            close(socketDialogue);
+                            exit(-5);
+                        case 0 :
+                            strcpy(messageEnvoi, "/mg serveur Le client ");
+                            strcat(messageEnvoi, temp->login);
+                            strcat(messageEnvoi, " s'est déconnecté.\n");
+                            mg(clients, temp->login, messageEnvoi, polls, &nbrePolls);
+                            disconnect(&clients, temp->login, polls, &nbrePolls);
+                            break;
+                        default:
+                            if (messageRecu[0] != 47) {
+                                break;
+                            }
+
+                            clients = cmdHandler(clients, temp, messageRecu, polls, &nbrePolls, greeting);
+                            break;
+                    }
+                }
+            }
         }
     }
 
