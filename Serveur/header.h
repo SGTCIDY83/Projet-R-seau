@@ -7,7 +7,7 @@ typedef struct User{
     struct User *suiv;
 }User;
 
-User* cmdHandler(User *clients, User *sender, char *command, char args[2][256], struct pollfd *polls, int *nbrePolls);
+User* cmdHandler(User *clients, User *sender, char *command, char args[2][256], struct pollfd *polls, int *nbrePolls, char greeting[100]);
 
 int version(char *msg);
 
