@@ -127,6 +127,10 @@ int main(int argc, char **argv) {
 
                 prevCmd = getCmd(messageEnvoi); //On récupère la commande
 
+                for (int i = 0; i < 2; i++) {
+                    free(prevArgs[i]);
+                    prevArgs[i] = malloc(LG_MESSAGE * sizeof(char));
+                }
                 int j = 0;
                 int sub = strlen(prevCmd) + 1;
                 for (int i = strlen(prevCmd) + 1; i < strlen(messageEnvoi); i++) {
