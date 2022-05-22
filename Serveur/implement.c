@@ -1,16 +1,56 @@
-User *cmdHandler(User *clients, User *sender, char *command, char args[2][256], struct pollfd *polls, int *nbrePolls, char greeting[100]) {
+char *getCmd(char message[]) {
+    char *cmd = malloc(LG_MESSAGE * sizeof(char));
+    for (int i = 0; i < strlen(message); i++) {
+        if (message[i] != 32 && message[i] != 10) {
+            cmd[i] = message[i];
+        } else {
+            break;
+        }
+    }
+
+    return cmd;
+}
+
+char **getArgs(char message[], char cmd[]) {
+    char **args = malloc(2 * sizeof(char *));
+    for (int i = 0; i < 2; i++) {
+        args[i] = malloc(LG_MESSAGE * sizeof(char));
+    }
+    int j = 0;
+    int sub = strlen(cmd) + 1;
+    for (int i = strlen(cmd) + 1; i < strlen(message); i++) {
+        if ((!strcmp(cmd, "/mp") || !strcmp(cmd, "/mg")) && j == 0) {
+            if (message[i] != 32) {
+                args[j][i - sub] = message[i];
+            } else {
+                j++;
+                sub = i + 1;
+            }
+            continue;
+        } else if (message[i] != 10) {
+            args[j][i - sub] = message[i];
+        }
+    }
+
+    return args;
+}
+
+User *cmdHandler(User *clients, User *sender, char *message, struct pollfd *polls, int *nbrePolls,
+                 char greeting[100]) {
     User *temp = clients;
-    char *listCommands[6];
+    char *listCommands[5];
+    int size = sizeof(listCommands) / sizeof(listCommands[0]);
+    char *command = getCmd(message);
+    char **args = getArgs(message, command);
     int i = 0;
 
-    listCommands[0] = "/quit";
-    listCommands[1] = "/login";
-    listCommands[2] = "/mp";
-    listCommands[3] = "/mg";
-    listCommands[4] = "/users";
-    listCommands[5] = "/version";
+    listCommands[0] = "/login";
+    listCommands[1] = "/mp";
+    listCommands[2] = "/mg";
+    listCommands[3] = "/users";
+    listCommands[4] = "/version";
 
-    for (i = 0; i < 6; i++) {
+    for (i = 0; i < size; i++) {
         if (!strcmp(listCommands[i], command)) {
             break;
         }
@@ -18,32 +58,32 @@ User *cmdHandler(User *clients, User *sender, char *command, char args[2][256], 
 
     switch (i) {
         case 0:
-            printf("Le client %s s'est déconnecté.\n", sender->login);
-            strcpy(args[0], "/mg serveur Le client ");
-            strcat(args[0], sender->login);
-            strcat(args[0], " s'est déconnecté.\n");
+            for (int i = 0; i < strlen(args[0]); i++) {
+                args[1][i] = args[0][i];
+            }
 
-            mg(clients, sender->login, args[0], polls, nbrePolls);
-
-            clients = disconnect(clients, sender->login, polls, nbrePolls);
-
-            break;
-        case 1:
             if (strcmp(sender->login, "") != 0) {
+                serverMsg(clients, sender, "/ret 400\n", polls, nbrePolls);
+                break;
+            } else if (!strcmp(args[1], "you")) {
                 serverMsg(clients, sender, "/ret 409\n", polls, nbrePolls);
                 break;
             }
+
             while (temp != NULL && strcmp(args[0], temp->login) != 0) {
                 temp = temp->suiv;
             }
-            if(temp != NULL){
+
+            if (temp != NULL) {
                 serverMsg(clients, sender, "/ret 409\n", polls, nbrePolls);
                 break;
             }
+
             if (!login(sender->login, args[0])) {
                 serverMsg(clients, sender, "/ret 400\n", polls, nbrePolls);
                 break;
             }
+
             serverMsg(clients, sender, "/ret 200\n", polls, nbrePolls);
             strcpy(args[0], "/mg serveur Le client ");
             strcat(args[0], sender->login);
@@ -51,7 +91,7 @@ User *cmdHandler(User *clients, User *sender, char *command, char args[2][256], 
 
             mg(clients, sender->login, args[0], polls, nbrePolls);
             break;
-        case 2:
+        case 1:
             while (temp != NULL && strcmp(temp->login, args[0]) != 0) {
                 temp = temp->suiv;
             }
@@ -75,12 +115,12 @@ User *cmdHandler(User *clients, User *sender, char *command, char args[2][256], 
             if (mp(clients, temp, msgpriv)) {
                 serverMsg(clients, sender, "/ret 200\n", polls, nbrePolls);
             } else {
-                clients = disconnect(clients, temp->login, polls, nbrePolls);
+                disconnect(&clients, temp->login, polls, nbrePolls);
                 serverMsg(clients, sender, "/ret 404\n", polls, nbrePolls);
             }
 
             break;
-        case 3:
+        case 2:
             if (!strcmp(args[0], "")) {
                 serverMsg(clients, sender, "/ret 400\n", polls, nbrePolls);
                 break;
@@ -95,11 +135,11 @@ User *cmdHandler(User *clients, User *sender, char *command, char args[2][256], 
             mg(clients, sender->login, msgglob, polls, nbrePolls);
 
             break;
-        case 4:
+        case 3:
             users(clients, sender, polls, nbrePolls);
 
             break;
-        case 5:
+        case 4:
             if (version(args[0]) == 1) {
                 char greetingMess[110] = "/greating ";
                 strcat(greetingMess, greeting);
@@ -107,13 +147,11 @@ User *cmdHandler(User *clients, User *sender, char *command, char args[2][256], 
                 serverMsg(clients, sender, greetingMess, polls, nbrePolls);
                 serverMsg(clients, sender, "/login\n", polls, nbrePolls);
             } else if (version(args[0]) == 0) {
-                serverMsg(clients, sender, "/ret 400\n", polls, nbrePolls);
-            } else if (version(args[0]) == 2) {
                 serverMsg(clients, sender, "/ret 426\n", polls, nbrePolls);
             }
 
             break;
-        case 6:
+        case 5:
             serverMsg(clients, sender, "/ret 501\n", polls, nbrePolls);
             break;
     }
@@ -122,60 +160,60 @@ User *cmdHandler(User *clients, User *sender, char *command, char args[2][256], 
 }
 
 int version(char *msg) {
-    if (!strcmp(msg, "") || !strcmp(msg, " ")) {
+    if (strcmp(msg, "0.1b") != 0 && strcmp(msg, "0.1c") != 0) {
         return 0;
-    } else if (strcmp(msg, "0.1b") != 0 && strcmp(msg, "0.1c") != 0) {
-        return 2;
     }
     return 1;
 }
 
-User *disconnect(User *clients, char *Lequel, struct pollfd *polls, int *nbrePolls) {
-    if (clients == NULL) {
-        return NULL;
-    } else if (clients->suiv == NULL) {
-        free(clients);
-        polls[1].fd = polls[1].events = polls[1].revents = 0;
-        return NULL;
-    }
+void disconnect(User **clients, char *Lequel, struct pollfd *polls, int *nbrePolls) {
+    User *temp = *clients;
 
-    User *temp = clients;
+    User *prev = NULL;
 
-    while (temp != NULL) {
-        if (!strcmp(temp->login, Lequel)) {
-            close(temp->socketClient);
-            for (int i = 1; i < *nbrePolls; i++) {
-                if (polls[i].fd == temp->socketClient) {
-                    polls[i].revents = 0;
-                    for (int j = i; j < 3; j++) {
-                        polls[j].fd = polls[j + 1].fd;
-                        polls[j].events = polls[j + 1].events;
-                    }
-                    polls[3].fd = polls[3].events = 0;
-                    break;
+    if (temp != NULL && !strcmp(temp->login, Lequel)) {
+        close(temp->socketClient);
+        for (int i = 1; i < *nbrePolls; i++) {
+            if (polls[i].fd == temp->socketClient) {
+                polls[i].revents = 0;
+                for (int j = i; j < 3; j++) {
+                    polls[j].fd = polls[j + 1].fd;
+                    polls[j].events = polls[j + 1].events;
                 }
+                polls[3].fd = polls[3].events = 0;
+                break;
             }
-            --*nbrePolls;
-
-            if (temp->socketClient == clients->socketClient) {
-                clients = clients->suiv;
-                free(temp);
-            } else {
-                User *delete = temp;
-                temp = clients;
-
-                while (temp->suiv != NULL && temp->suiv->socketClient != delete->socketClient) temp = temp->suiv;
-
-                temp->suiv = temp->suiv->suiv;
-                free(delete);
-            }
-
-            break;
         }
+        --*nbrePolls;
+
+        *clients = temp->suiv;
+        free(temp);
+        return;
+    }
+    while (temp != NULL && strcmp(temp->login, Lequel) != 0) {
+        prev = temp;
         temp = temp->suiv;
     }
 
-    return clients;
+    if (temp == NULL) return;
+
+    close(temp->socketClient);
+    for (int i = 1; i < *nbrePolls; i++) {
+        if (polls[i].fd == temp->socketClient) {
+            polls[i].revents = 0;
+            for (int j = i; j < 3; j++) {
+                polls[j].fd = polls[j + 1].fd;
+                polls[j].events = polls[j + 1].events;
+            }
+            polls[3].fd = polls[3].events = 0;
+            break;
+        }
+    }
+    --*nbrePolls;
+
+    prev->suiv = temp->suiv;
+
+    free(temp);
 }
 
 int login(char *buffer, char *usrName) {
@@ -211,7 +249,7 @@ void mg(User *clients, char *senderName, char *msg, struct pollfd *polls, int *n
 
     while (temp != NULL) {
         if (strcmp(temp->login, senderName) != 0 && mp(clients, temp, msg) == 0)
-            clients = disconnect(clients, temp->login, polls, nbrePolls);
+            disconnect(&clients, temp->login, polls, nbrePolls);
 
         temp = temp->suiv;
     }
@@ -239,7 +277,7 @@ void serverMsg(User *clients, User *target, char *msg, struct pollfd *polls, int
             exit(-3);
         case 0:
             fprintf(stderr, "La client %s a fermé la socket !\n\n", target->login);
-            clients = disconnect(clients, target->login, polls, nbrePolls);
+            disconnect(&clients, target->login, polls, nbrePolls);
             break;
     }
 }

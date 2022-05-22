@@ -1,7 +1,4 @@
-run : client clean
-	./client -p 5000
-
-clean :
+clean : client
 	rm client.o
 
 client : client.o

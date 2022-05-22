@@ -127,7 +127,7 @@ int main(int argc, char **argv) {
 
                 prevCmd = getCmd(messageEnvoi); //On récupère la commande
                 prevArgs = getArgs(messageEnvoi, prevCmd); //On récupère le/les argument(s)
-                if(!strcmp(prevCmd, "/mg")) {
+                if (!strcmp(prevCmd, "/mg")) {
                     printf("\x1b[1F"); // On va a la ligne précédente du terminal
                     printf("\x1b[2K"); // On efface la ligne
                     printf("\033[94mGLOBAL\033[32m You\033[0m>\033[93m %s\033[0m\n", prevArgs[0]);

@@ -101,20 +101,40 @@ void cmdHandler(char *message, char prevCmd[], char **prevArgs) {
                         } else if (!strcmp(prevCmd, "/login")) {
                             printf("\x1b[1F"); // On va a la ligne précédente du terminal
                             printf("\x1b[2K"); // On efface la ligne
-                            printf("\033[92mVotre nom d'utilisateur est maintenant\033[96m '%s'\033[0m\n\n", prevArgs[0]);
+                            printf("\033[92mVotre nom d'utilisateur est maintenant\033[96m '%s'\033[0m\n\n",
+                                   prevArgs[0]);
                         }
                         break;
                     case 400:
-                        printf("\033[31mBad request: Invalid command\033[0m\n");
+                        printf("\x1b[1F"); // On va a la ligne précédente du terminal
+                        printf("\x1b[2K"); // On efface la ligne
+                        printf("\033[31mBad request: Invalid command syntax '%s ", prevCmd);
+                        if (!strcmp(prevCmd, "/login")) {
+                            printf("$USERNAME$'\033[0m\n");
+                        } else if (!strcmp(prevCmd, "/mp")) {
+                            printf("$ADRESSEE$ $MESSAGE$'\033[0m\n");
+                        } else if (!strcmp(prevCmd, "/mg")) {
+                            printf("$MESSAGE$'\033[0m\n");
+                        }
                         break;
                     case 404:
-                        printf("\033[31mNot Found: Invalid user\033[0m\n");
+                        printf("\x1b[1F"); // On va a la ligne précédente du terminal
+                        printf("\x1b[2K"); // On efface la ligne
+                        printf("\033[31mNot Found: User '%s' not found\033[0m\n", prevArgs[0]);
                         break;
                     case 409:
-                        printf("\033[31mConflict: You already have a username or someone has taken it already\033[0m\n");
+                        printf("\x1b[1F"); // On va a la ligne précédente du terminal
+                        printf("\x1b[2K"); // On efface la ligne
+                        printf("\033[31mConflict: You already have a username or '%s' was taken\033[0m\n", prevArgs[0]);
+                        break;
+                    case 426:
+                        printf("\033[31mUpdate required: Your version is too old\033[0m\n");
+                        exit(-1);
                         break;
                     case 501:
-                        printf("\033[31mNot implemented: Command does not exist\033[0m\n");
+                        printf("\x1b[1F"); // On va a la ligne précédente du terminal
+                        printf("\x1b[2K"); // On efface la ligne
+                        printf("\033[31mNot implemented: Command '%s' does not exist\033[0m\n", prevCmd);
                         break;
                 }
 
@@ -122,7 +142,15 @@ void cmdHandler(char *message, char prevCmd[], char **prevArgs) {
             case 1:
                 printf("\x1b[1F"); // On va a la ligne précédente du terminal
                 printf("\x1b[2K"); // On efface la ligne
-                printf("\033[96m%s\033[0m\n", args[0]);
+                char *username = strtok(args[0], " "); //On sépare les noms d'utilisateurs
+                printf("\033[95mUtilisateurs: \033[96m-%s\n", username);
+                username = strtok(NULL, " "); //On passe au nom suivant
+                while (username != NULL) {
+                    printf("              -%s\n", username); // On affiche le nom
+
+                    username = strtok(NULL, " "); //On passe au nom suivant
+                }
+                printf("\033[0m\n");
                 break;
             case 2:
                 printf("\033[33mPRIVATE\033[32m %s to You\033[0m>\033[93m %s\033[0m\n", args[0], args[1]);

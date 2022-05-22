@@ -1,17 +1,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct User{
+#define LG_MESSAGE 256
+
+typedef struct User {
     int socketClient;
     char login[50];
     struct User *suiv;
-}User;
+} User;
 
-User* cmdHandler(User *clients, User *sender, char *command, char args[2][256], struct pollfd *polls, int *nbrePolls, char greeting[100]);
+char *getCmd(char message[]);
+
+char **getArgs(char message[], char prevCmd[]);
+
+User *cmdHandler(User *clients, User *sender, char *message, struct pollfd *polls, int *nbrePolls,
+                 char greeting[100]);
 
 int version(char *msg);
 
-User* disconnect(User *clients, char *Lequel, struct pollfd polls[4], int *nbrePolls);
+void disconnect(User **clients, char *Lequel, struct pollfd polls[4], int *nbrePolls);
 
 int login(char *buffer, char *usrName);
 

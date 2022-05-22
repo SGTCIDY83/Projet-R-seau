@@ -5,10 +5,9 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <poll.h>
+#include <ctype.h>
 #include "./header.h"
 #include "./implement.c"
-
-#define LG_MESSAGE 256
 
 int main(int argc, char **argv) {
     int PORT = -1;
@@ -109,7 +108,7 @@ int main(int argc, char **argv) {
         memset(messageRecu, 0x00, LG_MESSAGE * sizeof(char));
         User *temp = clients;
         char getCmd[LG_MESSAGE * sizeof(char)] = {"\0"};
-        char getArgs[2][LG_MESSAGE * sizeof(char)] = {"\0"};
+        char getArgs[2][LG_MESSAGE * sizeof(char)] = {"\0", {"\0"}};
 
         if (poll(polls, nbrePolls, 3000) == -1) perror("select");
         else if ((polls[1].revents || polls[2].revents || polls[3].revents) && POLLIN) {
@@ -130,41 +129,18 @@ int main(int argc, char **argv) {
                     close(socketDialogue);
                     exit(-5);
                 case 0 :
-                    fprintf(stderr, "Le client %s s'est deconnecté.\n\n", temp->login);
                     strcpy(messageEnvoi, "/mg serveur Le client ");
                     strcat(messageEnvoi, temp->login);
                     strcat(messageEnvoi, " s'est déconnecté.\n");
                     mg(clients, temp->login, messageEnvoi, polls, &nbrePolls);
-                    clients = disconnect(clients, temp->login, polls, &nbrePolls);
+                    disconnect(&clients, temp->login, polls, &nbrePolls);
                     break;
                 default:
                     if (messageRecu[0] != 47) {
                         break;
                     }
 
-                    for (int i = 0; i < strlen(messageRecu); i++) {
-                        if (messageRecu[i] != 32 && messageRecu[i] != 10) {
-                            getCmd[i] = messageRecu[i];
-                        } else {
-                            break;
-                        }
-                    }
-
-                    int j = 0;
-                    int sub = strlen(getCmd) + 1;
-                    for (int i = strlen(getCmd) + 1; i < strlen(messageRecu); i++) {
-                        if (!strcmp(getCmd, "/mp") && j == 1 || !strcmp(getCmd, "/mg")) {
-                            getArgs[j][i - sub] = messageRecu[i];
-                            continue;
-                        } else if (messageRecu[i] != 32 && messageRecu[i] != 10) {
-                            getArgs[j][i - sub] = messageRecu[i];
-                        } else {
-                            j++;
-                            sub = i + 1;
-                        }
-                    }
-
-                    clients = cmdHandler(clients, temp, getCmd, getArgs, polls, &nbrePolls, greeting);
+                    clients = cmdHandler(clients, temp, messageRecu, polls, &nbrePolls, greeting);
                     break;
             }
         } else if (polls[0].revents && POLLIN && nbrePolls < 4) {
